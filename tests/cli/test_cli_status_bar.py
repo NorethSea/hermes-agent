@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import cli as cli_mod
 from cli import HermesCLI
+from hermes_cli.skin_engine import set_active_skin
 
 
 def _make_cli(model: str = "anthropic/claude-sonnet-4-20250514"):
@@ -130,10 +131,33 @@ class TestCLIStatusBar:
         # stale prompt/input cells visible after resize.
         assert cli_mod._estimate_tui_input_height(["abcdef"], "⚔ ", 3) == 3
 
+    def test_build_status_bar_text_collapses_for_narrow_terminal(self):
+        cli_obj = _attach_agent(
+            _make_cli(),
+            prompt_tokens=10000,
+            completion_tokens=2400,
+            total_tokens=12400,
+            api_calls=7,
+            context_tokens=12400,
+            context_length=200_000,
+        )
 
+        set_active_skin("default")
+        text = cli_obj._build_status_bar_text(width=60)
 
+        assert "⚕" in text
+        assert "$0.06" not in text  # cost hidden by default
+        assert "15m" in text
+        assert "200K" not in text
 
+    def test_build_status_bar_text_handles_missing_agent(self):
+        cli_obj = _make_cli()
 
+        set_active_skin("default")
+        text = cli_obj._build_status_bar_text(width=100)
+
+        assert "⚕" in text
+        assert "claude-sonnet-4-20250514" in text
 
     def test_compression_count_shown_in_wide_status_bar(self):
         cli_obj = _attach_agent(
