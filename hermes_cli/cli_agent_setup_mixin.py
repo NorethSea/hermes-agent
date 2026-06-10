@@ -703,12 +703,18 @@ class CLIAgentSetupMixin:
         from rich.text import Text
         _history_text_c, _session_label_c, _session_border_c, _assistant_label_c = (
             _resume_panel_colors())
+        _agent_label = "Hermes"
+        try:
+            from hermes_cli.skin_engine import get_active_skin
+            _agent_label = get_active_skin().get_branding("agent_name") or _agent_label
+        except Exception:
+            pass
 
         # role -> (label, label style, body style, continuation indent)
         role_styles = {
             "user": ("  ● You: ", f"dim bold {_session_label_c}", "dim", " " * 9),
-            "assistant": ("  ◆ Hermes: ", f"dim bold {_assistant_label_c}", "dim", " " * 12),
-            "assistant_last": ("  ◆ Hermes: ", f"bold {_assistant_label_c}", "", " " * 12),  # full, non-dim
+            "assistant": (f"  ◆ {_agent_label}: ", f"dim bold {_assistant_label_c}", "dim", " " * 12),
+            "assistant_last": (f"  ◆ {_agent_label}: ", f"bold {_assistant_label_c}", "", " " * 12),  # full, non-dim
         }
         lines = Text()
         if skipped:
