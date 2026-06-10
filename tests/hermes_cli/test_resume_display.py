@@ -129,7 +129,7 @@ class TestDisplayResumedHistory:
         output = self._capture_display(cli)
 
         assert "You:" in output
-        assert "Hermes:" in output
+        assert "◆" in output  # assistant label with skin agent_name
         assert "What is Python?" in output
         assert "Python is a high-level programming language." in output
         assert "How do I install it?" in output
@@ -212,7 +212,6 @@ class TestDisplayResumedHistory:
         output = self._capture_display(cli)
 
         assert output.strip() == ""
-
 
 
 

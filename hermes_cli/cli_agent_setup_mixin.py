@@ -846,10 +846,16 @@ class CLIAgentSetupMixin:
         from rich.text import Text
         _history_text_c, _session_label_c, _session_border_c, _assistant_label_c = (
             _resume_panel_colors())
+        _agent_label = "Hermes"
+        try:
+            from hermes_cli.skin_engine import get_active_skin
+            _agent_label = get_active_skin().get_branding("agent_name") or _agent_label
+        except Exception:
+            pass
 
         # role -> (label, label style, body style, continuation indent)
         you_label = f"  {t('cli.resume.label_you')} "
-        assistant_label = f"  {t('cli.resume.label_assistant', agent_name='Hermes')} "
+        assistant_label = f"  {t('cli.resume.label_assistant', agent_name=_agent_label)} "
         role_styles = {
             "user": (you_label, f"dim bold {_session_label_c}", "dim", " " * len(you_label)),
             "assistant": (assistant_label, f"dim bold {_assistant_label_c}", "dim", " " * len(assistant_label)),
