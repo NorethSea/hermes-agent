@@ -717,8 +717,14 @@ def _find_skill(name: str) -> Optional[Dict[str, Any]]:
     the caller to use. The bare-name match compares the skill's own
     directory name (``parent.name``), so bare lookups keep working for
     category-nested skills.
+
+    Uses os.walk with followlinks=True instead of Path.rglob so that
+    symlinked skill directories (e.g. shared skills under ~/.agents/skills/)
+    are visible — Python 3.11's rglob does not follow directory symlinks
+    (the follow_symlinks parameter was added in 3.12).
     """
     from agent.skill_utils import get_all_skills_dirs, is_excluded_skill_path
+    import os
 
     # Resolve the local skills root once — the categorized form matches the
     # skill dir's path RELATIVE to that root. Only computed lazily (bare-name
@@ -741,7 +747,10 @@ def _find_skill(name: str) -> Optional[Dict[str, Any]]:
     for skills_dir in get_all_skills_dirs():
         if not skills_dir.exists():
             continue
-        for skill_md in skills_dir.rglob("SKILL.md"):
+        for root, _dirs, files in os.walk(skills_dir, followlinks=True):
+            if "SKILL.md" not in files:
+                continue
+            skill_md = Path(root) / "SKILL.md"
             if is_excluded_skill_path(skill_md):
                 continue
             # Fast path first: the bare directory name. Avoids the resolve()
