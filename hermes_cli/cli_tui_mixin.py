@@ -303,8 +303,8 @@ class CLITuiMixin:
         if self._agent_running:
             _working_icon = "☤"
             try:
-                from hermes_cli.skin_engine import get_active_skin
-                _working_icon = get_active_skin().get_branding("status_prefix", "☤ ").rstrip()
+                from hermes_cli.skin_engine import get_active_status_prefix
+                _working_icon = get_active_status_prefix().rstrip()
             except Exception:
                 pass
             return _state_fragment("class:prompt-working", _working_icon)

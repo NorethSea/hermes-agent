@@ -1015,8 +1015,8 @@ class CLIStatusBarMixin:
         duration_label = snapshot["duration"]
         goal_segment = self._status_bar_goal_segment(snapshot)
         focus_label = snapshot.get("focus_label") or ""
-        from hermes_cli.skin_engine import get_active_skin
-        _prefix = get_active_skin().get_branding("status_prefix", "☤ ")
+        from hermes_cli.skin_engine import get_active_status_prefix
+        _prefix = get_active_status_prefix()
 
         def _ok(name: str) -> bool:
             return field_set is None or name in field_set
@@ -1101,8 +1101,8 @@ class CLIStatusBarMixin:
         """Compact one-line session status string for the TUI footer."""
         _prefix = "☤ "
         try:
-            from hermes_cli.skin_engine import get_active_skin
-            _prefix = get_active_skin().get_branding("status_prefix", _prefix)
+            from hermes_cli.skin_engine import get_active_status_prefix
+            _prefix = get_active_status_prefix()
             snapshot = self._get_status_bar_snapshot()
             if width is None:
                 width = self._get_tui_terminal_width()
@@ -1133,8 +1133,8 @@ class CLIStatusBarMixin:
             return []
         _prefix = "☤ "
         try:
-            from hermes_cli.skin_engine import get_active_skin
-            _prefix = get_active_skin().get_branding("status_prefix", _prefix)
+            from hermes_cli.skin_engine import get_active_status_prefix
+            _prefix = get_active_status_prefix()
             snapshot = self._get_status_bar_snapshot()
             # prompt_toolkit's own width: shutil's can be stale (esp. over SSH) and an overflow
             # produces duplicated status-bar rows over long sessions.

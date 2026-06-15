@@ -486,6 +486,22 @@ def get_active_prompt_symbol(fallback: str = "❯") -> str:
     return f"{cleaned or fallback.strip()} "
 
 
+def get_active_status_prefix(fallback: str = "☤ ") -> str:
+    """Return the status bar prefix with a guaranteed trailing space.
+
+    Skins store ``status_prefix`` with a trailing space by convention
+    (e.g. ``☤ ``, ``✦ ``, ``⚔ ``). This helper guarantees the trailing
+    space is always present so renderers can compose the prefix safely.
+    """
+    try:
+        raw = get_active_skin().get_branding("status_prefix", fallback)
+    except Exception:
+        raw = fallback
+    if not raw or not raw.strip():
+        return fallback
+    return f"{raw.rstrip()} "
+
+
 def get_active_help_header(fallback: str = "(^_^)? Available Commands") -> str:
     return _active_branding("help_header", fallback)
 
