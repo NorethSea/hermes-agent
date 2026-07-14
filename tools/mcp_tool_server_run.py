@@ -31,11 +31,16 @@ class MCPServerRunMixin:
     async def _cancel_waiters(*tasks: asyncio.Task) -> None:
         for t in tasks:
             if not t.done():
-                t.cancel()
                 try:
-                    await t
-                except (asyncio.CancelledError, Exception):
+                    t.cancel()
+                except RuntimeError:
+                    # Event loop already closed (benign shutdown race).
                     pass
+                else:
+                    try:
+                        await t
+                    except (asyncio.CancelledError, Exception):
+                        pass
 
     def _event_waiters(self) -> tuple:
         """Fresh ``(shutdown, reconnect)`` wait tasks; cancel them via ``_cancel_waiters``."""
