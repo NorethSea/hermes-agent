@@ -718,13 +718,11 @@ def _find_skill(name: str) -> Optional[Dict[str, Any]]:
     directory name (``parent.name``), so bare lookups keep working for
     category-nested skills.
 
-    Uses os.walk with followlinks=True instead of Path.rglob so that
+    Uses the shared ``iter_skill_index_files`` traversal, which follows
     symlinked skill directories (e.g. shared skills under ~/.agents/skills/)
-    are visible — Python 3.11's rglob does not follow directory symlinks
-    (the follow_symlinks parameter was added in 3.12).
+    and applies the common skill-root exclusions.
     """
-    from agent.skill_utils import get_all_skills_dirs, is_excluded_skill_path
-    import os
+    from agent.skill_utils import get_all_skills_dirs, iter_skill_index_files
 
     # Resolve the local skills root once — the categorized form matches the
     # skill dir's path RELATIVE to that root. Only computed lazily (bare-name
@@ -747,12 +745,7 @@ def _find_skill(name: str) -> Optional[Dict[str, Any]]:
     for skills_dir in get_all_skills_dirs():
         if not skills_dir.exists():
             continue
-        for root, _dirs, files in os.walk(skills_dir, followlinks=True):
-            if "SKILL.md" not in files:
-                continue
-            skill_md = Path(root) / "SKILL.md"
-            if is_excluded_skill_path(skill_md):
-                continue
+        for skill_md in iter_skill_index_files(skills_dir, "SKILL.md"):
             # Fast path first: the bare directory name. Avoids the resolve()
             # machinery entirely on the common match.
             if skill_md.parent.name == name:
@@ -856,7 +849,7 @@ def _find_skill_in_other_profiles(name: str) -> List[Tuple[str, Path]]:
     matches: List[Tuple[str, Path]] = []
     try:
         from hermes_constants import get_default_hermes_root
-        from agent.skill_utils import is_excluded_skill_path
+        from agent.skill_utils import iter_skill_index_files
     except Exception:
         return matches
 
@@ -900,9 +893,7 @@ def _find_skill_in_other_profiles(name: str) -> List[Tuple[str, Path]]:
         if not skills_dir.is_dir():
             continue
         try:
-            for skill_md in skills_dir.rglob("SKILL.md"):
-                if is_excluded_skill_path(skill_md):
-                    continue
+            for skill_md in iter_skill_index_files(skills_dir, "SKILL.md"):
                 if skill_md.parent.name == name:
                     matches.append((profile_name, skill_md.parent))
                     break  # one match per profile is enough
