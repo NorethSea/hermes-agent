@@ -1048,6 +1048,81 @@ class TestMCPServerTask:
 
         asyncio.run(_test())
 
+    def test_shutdown_signals_task_exit(self):
+        """shutdown() signals the event and waits for task completion."""
+        from tools.mcp_tool import MCPServerTask
+
+        mock_session = MagicMock()
+        mock_session.initialize = AsyncMock()
+        mock_session.list_tools = AsyncMock(
+            return_value=SimpleNamespace(tools=[])
+        )
+
+        p_stdio, p_cs, _, _ = self._mock_stdio_and_session(mock_session)
+
+        async def _test():
+            with patch("tools.mcp_tool.StdioServerParameters"), p_stdio, p_cs:
+                server = MCPServerTask("srv")
+                await server.start({"command": "npx"})
+
+                assert server.session is not None
+                assert not server._task.done()
+
+                await server.shutdown()
+
+                assert server.session is None
+                assert server._task.done()
+
+        asyncio.run(_test())
+
+    def test_wait_for_lifecycle_event_recycles_idle_stdio_server(self):
+        from tools.mcp_tool import MCPServerTask
+
+        async def _test():
+            server = MCPServerTask("srv")
+            server._config = {"command": "npx"}
+            server.session = MagicMock()
+            server._idle_timeout_seconds = 0.01
+            server._last_tool_call_at = time.monotonic() - 1.0
+
+            reason = await server._wait_for_lifecycle_event()
+
+            assert reason == "recycle"
+            assert server._recycled_reason == "idle_timeout_seconds"
+            assert server.session is None
+
+        asyncio.run(_test())
+
+    def test_wait_for_lazy_reconnect_handles_closed_loop_race(self):
+        """A closed loop during waiter cleanup must not leak RuntimeError."""
+        from tools.mcp_tool_server_run import MCPServerRunMixin
+
+        class _ClosedLoopTask:
+            def done(self):
+                return False
+
+            def cancel(self):
+                raise RuntimeError("Event loop is closed")
+
+        async def _test():
+            await MCPServerRunMixin._cancel_waiters(
+                _ClosedLoopTask(), _ClosedLoopTask()
+            )
+
+        asyncio.run(_test())
+
+    def test_stdio_recycle_reason_uses_max_lifetime(self):
+        from tools.mcp_tool import MCPServerTask
+
+        async def _test():
+            server = MCPServerTask("srv")
+            server._config = {"command": "npx"}
+            server._max_lifetime_seconds = 0.01
+            server._lifecycle_started_at = time.monotonic() - 1.0
+
+            assert server._stdio_recycle_reason() == "max_lifetime_seconds"
+
+        asyncio.run(_test())
 
     def test_stdio_recycle_deadline_pauses_while_rpc_active(self):
         from tools.mcp_tool import MCPServerTask
@@ -1336,6 +1411,36 @@ class TestShutdown:
         assert elapsed < delay * 3, (
             f"Shutdown took {elapsed:.3f}s, expected ~{delay}s (parallel)"
         )
+
+    def test_shutdown_drains_parked_server_task_before_closing_loop(self):
+        """The loop owner must clean up a parked MCPServerTask as a last resort."""
+        import tools.mcp_tool as mcp_mod
+        from tools import mcp_tool_loop as _mcp_loop
+        from tools.mcp_tool import MCPServerTask, _servers
+        from tools.mcp_tool_lifecycle import shutdown_mcp_servers
+
+        _servers.clear()
+        _mcp_loop._ensure_mcp_loop()
+        loop = mcp_mod._mcp_loop
+        server = MCPServerTask("parked")
+
+        async def _start_parked_task():
+            server._task = asyncio.create_task(server._wait_for_reconnect_or_shutdown())
+            await asyncio.sleep(0)
+
+        asyncio.run_coroutine_threadsafe(
+            _start_parked_task(), loop
+        ).result(timeout=2)
+        parked_task = server._task
+        _servers["parked"] = server
+
+        try:
+            with patch.object(MCPServerTask, "shutdown", new=AsyncMock()):
+                shutdown_mcp_servers()
+        finally:
+            _mcp_loop._stop_mcp_loop()
+
+        assert parked_task.done()
 
 
 # ---------------------------------------------------------------------------
