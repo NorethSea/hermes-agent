@@ -4477,11 +4477,16 @@ class MCPServerTask:
         finally:
             for task in (shutdown_task, reconnect_task):
                 if not task.done():
-                    task.cancel()
                     try:
-                        await task
-                    except (asyncio.CancelledError, Exception):
+                        task.cancel()
+                    except RuntimeError:
+                        # Event loop already closed (benign shutdown race).
                         pass
+                    else:
+                        try:
+                            await task
+                        except (asyncio.CancelledError, Exception):
+                            pass
 
 
 # ---------------------------------------------------------------------------
