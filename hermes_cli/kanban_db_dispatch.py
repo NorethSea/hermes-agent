@@ -205,6 +205,13 @@ def _wait_status_from_returncode(returncode: int) -> int:
     """Encode a ``Popen.returncode`` in the wait-status layout the registry stores."""
     return (int(returncode) & 0xFF) << 8
 
+# PIDs of workers WE spawned via _default_spawn. reap_worker_zombies() reaps
+# ONLY these (targeted waitpid), never wildcard waitpid(-1). A wildcard reap
+# in a process that also runs asyncio-managed stdio MCP subprocesses (the
+# gateway) steals those children's exit statuses, breaking MCP transport
+# setup with "unhandled errors in a TaskGroup (1 sub-exception)".
+_spawned_worker_pids: "set[int]" = set()
+
 
 def _record_worker_exit(pid: int, raw_status: int) -> None:
     """Record a reaped child's exit status; duplicate pids overwrite (latest wins)."""
@@ -280,7 +287,7 @@ def _worker_log_exit_code(task_id: str, board: Optional[str] = None) -> Optional
 
 def reap_worker_zombies() -> "list[int]":
     """Reap exited workers without blocking; returns reaped PIDs. POSIX reaps
-    every child via ``waitpid(-1)``; Windows polls the ``Popen`` handles
+    only tracked worker PIDs; Windows polls the ``Popen`` handles
     parked by ``_default_spawn`` (the only way to learn a child's exit code
     there), so the rate-limit sentinel exit is classified on both hosts."""
     reaped: "list[int]" = []
@@ -293,18 +300,24 @@ def reap_worker_zombies() -> "list[int]":
             _live_worker_procs.pop(pid, None)
             reaped.append(pid)
         return reaped
-    try:
-        while True:
-            try:
-                pid, status = os.waitpid(-1, os.WNOHANG)
-            except ChildProcessError:
-                break
-            if pid == 0:
-                break
-            _record_worker_exit(pid, status)
-            reaped.append(pid)
-    except Exception:
-        pass
+    # Targeted reap: only pids WE spawned. NEVER waitpid(-1) — that would
+    # steal exit statuses of unrelated children (asyncio stdio MCP
+    # servers), breaking their transport. See _spawned_worker_pids.
+    for pid in list(_spawned_worker_pids):
+        try:
+            wpid, status = os.waitpid(pid, os.WNOHANG)
+        except ChildProcessError:
+            # Not our child anymore (already reaped) — stop tracking.
+            _spawned_worker_pids.discard(pid)
+            continue
+        except Exception:
+            continue
+        if wpid == 0:
+            # Still running; keep tracking.
+            continue
+        _record_worker_exit(wpid, status)
+        _spawned_worker_pids.discard(wpid)
+        reaped.append(wpid)
     return reaped
 
 
@@ -2969,6 +2982,10 @@ def _default_spawn(task: Task, workspace: str, *, board: Optional[str] = None) -
     # the OS-level FD stays open in the child until it exits.
     if _kb._IS_WINDOWS:
         _live_worker_procs[proc.pid] = proc
+    else:
+        # Track this pid so reap_worker_zombies() reaps it by targeted waitpid
+        # (never wildcard -1, which would break sibling asyncio MCP subprocesses).
+        _spawned_worker_pids.add(proc.pid)
     return proc.pid
 
 
