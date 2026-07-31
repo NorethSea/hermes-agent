@@ -146,6 +146,20 @@ export function registerPetOverlayIpc({
       mainWindow.focus()
     }
 
+    // A plain pet click brings Hermes forward without minimizing an
+    // already-visible window (single-click raise; double-click opens the
+    // composer instead). Pure window control — don't forward it.
+    if (payload && payload.type === 'show-app') {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+
+      mainWindow.show()
+      mainWindow.focus()
+
+      return
+    }
+
     mainWindow.webContents.send('hermes:pet-overlay:control', payload)
   })
 }
