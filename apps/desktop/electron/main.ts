@@ -13746,6 +13746,8 @@ registerChatOnboardingWindow({
 // pushes pet state over IPC (hermes:pet-overlay:state); the overlay just renders
 // it. Control flows back (pop-in, composer submit) via hermes:pet-overlay:control.
 let petOverlayWindow = null
+let petOverlayBoundsReportTimer = null
+let preservePetOverlayActiveOnClose = false
 
 function petOverlayUrl() {
   if (DEV_SERVER) {
@@ -13753,6 +13755,22 @@ function petOverlayUrl() {
   }
 
   return `${pathToFileURL(resolveRendererIndex()).toString()}?win=overlay#/`
+}
+
+function schedulePetOverlayBoundsReport(win) {
+  if (petOverlayBoundsReportTimer) {
+    clearTimeout(petOverlayBoundsReportTimer)
+  }
+
+  petOverlayBoundsReportTimer = setTimeout(() => {
+    petOverlayBoundsReportTimer = null
+
+    if (win.isDestroyed() || !mainWindow || mainWindow.isDestroyed()) {
+      return
+    }
+
+    mainWindow.webContents.send('hermes:pet-overlay:control', { bounds: win.getBounds(), type: 'bounds' })
+  }, 120)
 }
 
 function spawnPetOverlayWindow(bounds) {
@@ -13832,7 +13850,22 @@ function spawnPetOverlayWindow(bounds) {
   // itself over the app, but its loss belongs in desktop.log.
   installWindowRendererLifecycle(win, { kind: 'overlay', callbacks: { log: rememberLog } })
 
+  // Renderer pointer capture normally reports the final drag position itself.
+  // Also observe the native window as a backstop: moving a frameless panel can
+  // lose pointerup on some window managers, which previously discarded the
+  // last desktop position. Debounce to one persistence write after movement.
+  win.on('move', () => schedulePetOverlayBoundsReport(win))
+  win.on('resize', () => schedulePetOverlayBoundsReport(win))
+
   win.on('closed', () => {
+    if (petOverlayBoundsReportTimer) {
+      clearTimeout(petOverlayBoundsReportTimer)
+      petOverlayBoundsReportTimer = null
+    }
+
+    const preserveActive = preservePetOverlayActiveOnClose
+    preservePetOverlayActiveOnClose = false
+
     if (petOverlayWindow === win) {
       petOverlayWindow = null
     }
@@ -13840,7 +13873,7 @@ function spawnPetOverlayWindow(bounds) {
     // If the overlay went away on its own (e.g. ⌘W), tell the main renderer to
     // pop the pet back in so it doesn't stay hidden. Harmless echo when we're
     // the ones who closed it (popInPet already cleared the active flag).
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    if (!preserveActive && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('hermes:pet-overlay:control', { type: 'pop-in' })
     }
   })
@@ -13872,8 +13905,9 @@ function openPetOverlay(bounds) {
   return petOverlayWindow
 }
 
-function closePetOverlay() {
+function closePetOverlay({ preserveActive = false } = {}) {
   if (petOverlayWindow && !petOverlayWindow.isDestroyed()) {
+    preservePetOverlayActiveOnClose = preserveActive
     petOverlayWindow.close()
   }
 
@@ -18333,7 +18367,7 @@ app.on('before-quit', event => {
 
   // The always-on-top overlay isn't a "real" app window; close it so a stray
   // pet can't keep the process alive or float over a quit app.
-  closePetOverlay()
+  closePetOverlay({ preserveActive: true })
   wakeIndicatorController.close()
   introRevealController.destroy()
 
