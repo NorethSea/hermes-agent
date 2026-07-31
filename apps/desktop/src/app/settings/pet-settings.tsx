@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { SearchField } from '@/components/ui/search-field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Slider } from '@/components/ui/slider'
@@ -37,6 +38,7 @@ import {
   setPetEnabled,
   setPetScale
 } from '@/store/pet-gallery'
+import { $petOverlayActive, popInPet, popOutPet } from '@/store/pet-overlay'
 import { $gatewayState } from '@/store/session'
 
 import { ListRow, SectionHeading, ToggleRow } from './primitives'
@@ -59,6 +61,7 @@ export function PetSettings() {
   const busySlug = useStore($petBusy)
   const petInfo = useStore($petInfo)
   const roam = useStore($petRoam)
+  const overlayActive = useStore($petOverlayActive)
   const [query, setQuery] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<GalleryPet | null>(null)
   const [renameTarget, setRenameTarget] = useState<GalleryPet | null>(null)
@@ -287,7 +290,40 @@ export function PetSettings() {
         )}
 
         {enabled && (
-          <ToggleRow checked={roam} description={copy.roamDesc} label={copy.roamTitle} onChange={setPetRoam} />
+          <ListRow
+            action={
+              <SegmentedControl
+                onChange={id => {
+                  if (id === 'desktop') {
+                    popOutPet()
+                  } else {
+                    popInPet()
+                  }
+
+                  triggerHaptic('crisp')
+                }}
+                options={[
+                  { id: 'window', label: copy.placementWindow },
+                  { id: 'desktop', label: copy.placementDesktop }
+                ]}
+                value={overlayActive ? 'desktop' : 'window'}
+              />
+            }
+            description={copy.placementDesc}
+            title={copy.placementTitle}
+          />
+        )}
+
+        {enabled && (
+          <ToggleRow
+            checked={roam}
+            description={copy.roamDesc}
+            label={copy.roamTitle}
+            onChange={on => {
+              setPetRoam(on)
+              triggerHaptic('crisp')
+            }}
+          />
         )}
       </div>
 
