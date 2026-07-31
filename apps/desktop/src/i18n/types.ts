@@ -917,6 +917,10 @@ export interface Translations extends NoticeTranslations {
         restartHint: string
         scaleTitle: string
         scaleDesc: string
+        placementTitle: string
+        placementDesc: string
+        placementWindow: string
+        placementDesktop: string
         roamTitle: string
         roamDesc: string
         chooseTitle: string
