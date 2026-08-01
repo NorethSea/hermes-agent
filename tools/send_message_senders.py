@@ -704,14 +704,20 @@ async def _qqbot_send_media_message(client, headers, chat_type, chat_id, file_in
     return await _qqbot_api_json(client, headers, "POST", path, body)
 
 
-async def _qqbot_send_text_message(client, headers, chat_id, message: str) -> dict:
-    """Try channel → C2C → group endpoints with a Markdown message."""
-    payload = {"markdown": {"content": (message or "")[:4000]}, "msg_type": 2}
+async def _qqbot_send_text_message(client, headers, chat_id, message: str, *, markdown_support=True) -> dict:
+    """Try channel → C2C → group endpoints with the configured text format."""
+    content = (message or "")[:4000]
+    channel_payload = {"content": content}
+    if markdown_support:
+        fallback_payload = {"markdown": {"content": content}, "msg_type": 2}
+    else:
+        fallback_payload = {"content": content, "msg_type": 0}
     endpoints = (("channel", f"https://api.sgroup.qq.com/channels/{chat_id}/messages"),
                  ("c2c", f"https://api.sgroup.qq.com/v2/users/{chat_id}/messages"),
                  ("group", f"https://api.sgroup.qq.com/v2/groups/{chat_id}/messages"))
     statuses = []
     for kind, url in endpoints:
+        payload = channel_payload if kind == "channel" else fallback_payload
         resp = await client.post(url, json=payload, headers=headers)
         if resp.status_code in {200, 201}:
             return _success("qqbot", chat_id, message_id=resp.json().get("id"))
@@ -793,6 +799,7 @@ async def _send_qqbot(pconfig, chat_id, message, media_files=None, caption=None)
                 return _error("QQBot: no access_token in response")
 
             headers = {"Authorization": f"QQBot {access_token}", "Content-Type": "application/json"}
+            markdown_support = bool(extra.get("markdown_support", True))
 
             # --- Media path (#37315) ---
             if media_files:
@@ -800,7 +807,8 @@ async def _send_qqbot(pconfig, chat_id, message, media_files=None, caption=None)
                 text = (message or "").strip()
                 warnings: list[str] = []
                 if text and not (caption and caption.strip()):
-                    text_result = await _qqbot_send_text_message(client, headers, chat_id, text)
+                    text_result = await _qqbot_send_text_message(
+                        client, headers, chat_id, text, markdown_support=markdown_support)
                     if isinstance(text_result, dict) and text_result.get("error"):
                         return text_result
                     last_result = text_result
@@ -835,7 +843,8 @@ async def _send_qqbot(pconfig, chat_id, message, media_files=None, caption=None)
                     if not fallback_text:
                         return {"error": "QQBot: no deliverable media attachments",
                                 **({"warnings": warnings} if warnings else {})}
-                    text_result = await _qqbot_send_text_message(client, headers, chat_id, fallback_text)
+                    text_result = await _qqbot_send_text_message(
+                        client, headers, chat_id, fallback_text, markdown_support=markdown_support)
                     if isinstance(text_result, dict) and text_result.get("error"):
                         return {**text_result, **({"warnings": warnings} if warnings else {})}
                     last_result = text_result
@@ -844,7 +853,8 @@ async def _send_qqbot(pconfig, chat_id, message, media_files=None, caption=None)
                 return last_result
 
             # --- Text-only path: first 2xx wins (pre-media behavior) ---
-            return await _qqbot_send_text_message(client, headers, chat_id, message or "")
+            return await _qqbot_send_text_message(
+                client, headers, chat_id, message or "", markdown_support=markdown_support)
     except Exception as e:
         return _error(f"QQBot send failed: {e}")
 
