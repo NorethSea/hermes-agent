@@ -2,7 +2,15 @@ import { atom } from 'nanostores'
 
 import { PRIMARY_SESSION_VIEW } from '@/app/chat/session-view'
 import { persistBoolean, persistString, storedBoolean, storedString } from '@/lib/storage'
-import { $petActivity, $petInfo, $petUnread, clearPetUnread, type PetActivity, type PetInfo } from '@/store/pet'
+import {
+  $petActivity,
+  $petInfo,
+  $petRoam,
+  $petUnread,
+  clearPetUnread,
+  type PetActivity,
+  type PetInfo
+} from '@/store/pet'
 import { $petPluginMessages, type PetPluginMessage } from '@/store/pet-plugin-messages'
 
 /**
@@ -16,9 +24,10 @@ import { $petPluginMessages, type PetPluginMessage } from '@/store/pet-plugin-me
  * in, submit a composer message) via `onControl`.
  *
  * The overlay renders the same `PetSprite` / `PetBubble` as the in-window pet by
- * mirroring the reactive inputs of `$petState` (`$petInfo`, `$petActivity`, the
- * primary view's turn-busy and awaiting-response) into its own copies of those atoms — so the
- * popped-out mascot is pixel-identical and needs zero bespoke render logic.
+ * mirroring the live render inputs (`$petInfo`, `$petActivity`, the primary
+ * view's turn-busy and awaiting-response) plus the roam preference into its own
+ * copies of those atoms — so the popped-out mascot stays in sync without a
+ * gateway connection.
  */
 
 export interface PetOverlayBounds {
@@ -45,6 +54,8 @@ export interface PetOverlayStatePayload {
   activity: PetActivity
   busy: boolean
   awaiting: boolean
+  /** Mirrors the device-local roam preference into the gateway-less overlay. */
+  roam: boolean
   /** Drives the overlay's mail icon: a finish landed while you were away. */
   unread: boolean
   /** Latest reaction — bumping its id forwards a burst to the overlay. */
@@ -166,6 +177,7 @@ function currentPayload(): PetOverlayStatePayload {
     activity: $petActivity.get(),
     busy: PRIMARY_SESSION_VIEW.$busy.get(),
     awaiting: PRIMARY_SESSION_VIEW.$awaitingResponse.get(),
+    roam: $petRoam.get(),
     unread: $petUnread.get(),
     reaction: $petReaction.get(),
     pluginMessages: $petPluginMessages.get()
@@ -204,6 +216,7 @@ function openOverlay(request: PetOverlayOpenRequest): void {
     $petActivity.subscribe(pushNow),
     PRIMARY_SESSION_VIEW.$busy.subscribe(pushNow),
     PRIMARY_SESSION_VIEW.$awaitingResponse.subscribe(pushNow),
+    $petRoam.subscribe(pushNow),
     $petUnread.subscribe(pushNow),
     $petReaction.subscribe(pushNow),
     $petPluginMessages.subscribe(pushNow)
