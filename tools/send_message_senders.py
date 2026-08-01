@@ -620,7 +620,7 @@ async def _send_qqbot(pconfig, chat_id, message):
 
             # Separate endpoints for guild channels, C2C (private) and groups; first 2xx wins.
             headers = {"Authorization": f"QQBot {access_token}", "Content-Type": "application/json"}
-            payload = {"content": message[:4000], "msg_type": 0}
+            payload = {"markdown": {"content": message[:4000]}, "msg_type": 2}
             endpoints = (("channel", f"https://api.sgroup.qq.com/channels/{chat_id}/messages"),
                          ("c2c", f"https://api.sgroup.qq.com/v2/users/{chat_id}/messages"),
                          ("group", f"https://api.sgroup.qq.com/v2/groups/{chat_id}/messages"))
