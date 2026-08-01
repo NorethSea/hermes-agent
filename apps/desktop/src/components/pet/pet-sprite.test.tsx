@@ -22,7 +22,7 @@ import { reactRoot } from '@/test/react-root'
 
 import { installWindowStateBridge, setDocumentHidden, type WindowStateBridge } from '../../test/window-state'
 
-import { PetSprite } from './pet-sprite'
+import { IDLE_REST_MIN_MS, PetSprite } from './pet-sprite'
 
 const INFO = {
   enabled: true,
@@ -111,7 +111,9 @@ describe('PetSprite RAF scheduling', () => {
   it('sleeps between visible sprite frames instead of chaining RAFs', () => {
     const raf = installRaf()
 
-    mount.render(<PetSprite info={INFO} />)
+    // `run` skips the live-idle sparse rhythm so the RAF scheduling below
+    // stays deterministic.
+    mount.render(<PetSprite info={INFO} stateOverride="run" />)
 
     expect(raf.request).toHaveBeenCalledTimes(1)
 
@@ -128,6 +130,42 @@ describe('PetSprite RAF scheduling', () => {
     })
 
     expect(raf.request).toHaveBeenCalledTimes(2)
+  })
+
+  it('holds the first live idle frame, plays one loop, then rests again', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const raf = installRaf()
+
+    mount.render(<PetSprite info={INFO} />)
+
+    act(() => {
+      raf.runNext(0)
+    })
+
+    expect(drawImage).toHaveBeenCalledTimes(1)
+    expect(drawImage.mock.calls[0]?.[1]).toBe(0)
+
+    act(() => {
+      vi.advanceTimersByTime(IDLE_REST_MIN_MS - 1)
+    })
+    expect(raf.pending()).toBe(0)
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+      raf.runNext(IDLE_REST_MIN_MS)
+      vi.advanceTimersByTime(60)
+      raf.runNext(IDLE_REST_MIN_MS + 60)
+    })
+
+    expect(drawImage.mock.calls.at(-1)?.[1]).toBe(16)
+
+    act(() => {
+      vi.advanceTimersByTime(60)
+      raf.runNext(IDLE_REST_MIN_MS + 120)
+    })
+
+    expect(drawImage.mock.calls.at(-1)?.[1]).toBe(0)
+    expect(vi.getTimerCount()).toBe(1)
   })
 
   it('uses a DPR-sized backing store while preserving the CSS footprint', () => {
