@@ -618,14 +618,23 @@ async def _send_qqbot(pconfig, chat_id, message):
             if not access_token:
                 return _error("QQBot: no access_token in response")
 
+            # Markdown is opt-out for C2C/group fallbacks, matching the QQ adapter;
+            # guild channel requests accept only a plain content body.
+            markdown_support = bool(extra.get("markdown_support", True))
+            channel_payload = {"content": message[:4000]}
+            if markdown_support:
+                fallback_payload = {"markdown": {"content": message[:4000]}, "msg_type": 2}
+            else:
+                fallback_payload = {"content": message[:4000], "msg_type": 0}
+
             # Separate endpoints for guild channels, C2C (private) and groups; first 2xx wins.
             headers = {"Authorization": f"QQBot {access_token}", "Content-Type": "application/json"}
-            payload = {"markdown": {"content": message[:4000]}, "msg_type": 2}
             endpoints = (("channel", f"https://api.sgroup.qq.com/channels/{chat_id}/messages"),
                          ("c2c", f"https://api.sgroup.qq.com/v2/users/{chat_id}/messages"),
                          ("group", f"https://api.sgroup.qq.com/v2/groups/{chat_id}/messages"))
             statuses = []
             for kind, url in endpoints:
+                payload = channel_payload if kind == "channel" else fallback_payload
                 resp = await client.post(url, json=payload, headers=headers)
                 if resp.status_code in {200, 201}:
                     return _success("qqbot", chat_id, message_id=resp.json().get("id"))
