@@ -705,8 +705,8 @@ async def _qqbot_send_media_message(client, headers, chat_type, chat_id, file_in
 
 
 async def _qqbot_send_text_message(client, headers, chat_id, message: str) -> dict:
-    """Try channel → C2C → group text endpoints (pre-media standalone behavior)."""
-    payload = {"content": (message or "")[:4000], "msg_type": 0}
+    """Try channel → C2C → group endpoints with a Markdown message."""
+    payload = {"markdown": {"content": (message or "")[:4000]}, "msg_type": 2}
     endpoints = (("channel", f"https://api.sgroup.qq.com/channels/{chat_id}/messages"),
                  ("c2c", f"https://api.sgroup.qq.com/v2/users/{chat_id}/messages"),
                  ("group", f"https://api.sgroup.qq.com/v2/groups/{chat_id}/messages"))
