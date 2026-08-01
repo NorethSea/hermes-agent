@@ -13266,7 +13266,6 @@ const wakeIndicatorController = createWakeIndicatorWindowController({
 // pushes pet state over IPC (hermes:pet-overlay:state); the overlay just renders
 // it. Control flows back (pop-in, composer submit) via hermes:pet-overlay:control.
 let petOverlayWindow = null
-let petOverlayBoundsReportTimer = null
 let preservePetOverlayActiveOnClose = false
 
 function petOverlayUrl() {
@@ -13275,22 +13274,6 @@ function petOverlayUrl() {
   }
 
   return `${pathToFileURL(resolveRendererIndex()).toString()}?win=overlay#/`
-}
-
-function schedulePetOverlayBoundsReport(win) {
-  if (petOverlayBoundsReportTimer) {
-    clearTimeout(petOverlayBoundsReportTimer)
-  }
-
-  petOverlayBoundsReportTimer = setTimeout(() => {
-    petOverlayBoundsReportTimer = null
-
-    if (win.isDestroyed() || !mainWindow || mainWindow.isDestroyed()) {
-      return
-    }
-
-    mainWindow.webContents.send('hermes:pet-overlay:control', { bounds: win.getBounds(), type: 'bounds' })
-  }, 120)
 }
 
 function spawnPetOverlayWindow(bounds) {
@@ -13370,19 +13353,7 @@ function spawnPetOverlayWindow(bounds) {
   // itself over the app, but its loss belongs in desktop.log.
   installWindowRendererLifecycle(win, { kind: 'overlay', callbacks: { log: rememberLog } })
 
-  // Renderer pointer capture normally reports the final drag position itself.
-  // Also observe the native window as a backstop: moving a frameless panel can
-  // lose pointerup on some window managers, which previously discarded the
-  // last desktop position. Debounce to one persistence write after movement.
-  win.on('move', () => schedulePetOverlayBoundsReport(win))
-  win.on('resize', () => schedulePetOverlayBoundsReport(win))
-
   win.on('closed', () => {
-    if (petOverlayBoundsReportTimer) {
-      clearTimeout(petOverlayBoundsReportTimer)
-      petOverlayBoundsReportTimer = null
-    }
-
     const preserveActive = preservePetOverlayActiveOnClose
     preservePetOverlayActiveOnClose = false
 

@@ -1,6 +1,6 @@
 // IPC surface for the pop-out pet overlay (mascot window). Extracted from
 // main.ts; window handles stay injected because main.ts owns their lifecycle.
-import { type BrowserWindow, ipcMain } from 'electron'
+import { type BrowserWindow, ipcMain, screen } from 'electron'
 
 export interface PetOverlayIpcDeps {
   getMainWindow: () => BrowserWindow | null
@@ -48,6 +48,19 @@ export function registerPetOverlayIpc({
     closePetOverlay()
 
     return { ok: true }
+  })
+  // Multi-display-safe desktop roam bounds. Browser `screen.availWidth` does
+  // not expose a dependable global origin on secondary monitors, while
+  // Electron can resolve the display containing the actual native overlay
+  // window.
+  ipcMain.handle('hermes:pet-overlay:work-area', async () => {
+    const petOverlayWindow = getPetOverlayWindow()
+
+    if (!petOverlayWindow || petOverlayWindow.isDestroyed()) {
+      return null
+    }
+
+    return screen.getDisplayMatching(petOverlayWindow.getBounds()).workArea
   })
   // Drag/resize: the overlay reports new absolute screen bounds (it already knows
   // the pointer's screen coords). Drag keeps the size constant; the wheel-to-scale
