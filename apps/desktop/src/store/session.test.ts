@@ -46,6 +46,7 @@ import {
   knownSessionOwner,
   knownSessionProfile,
   lineageAliases,
+  markSessionRead,
   mergeSessionPage,
   rememberedSessionProfile,
   resolveComposerSessionKey,
@@ -73,6 +74,7 @@ import {
   $attentionSessionIds,
   clearAllSessionStates,
   getRecentlySettledSessionIds,
+  markFocusedSessionRead,
   publishSessionState
 } from './session-states'
 
@@ -1065,6 +1067,7 @@ describe('unread finished sessions', () => {
     $selectedStoredSessionId.set(null)
     $sessions.set([])
     setUnreadRemote.mockClear()
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -1072,6 +1075,7 @@ describe('unread finished sessions', () => {
     $unreadFinishedSessionIds.set([])
     $selectedStoredSessionId.set(null)
     $sessions.set([])
+    vi.restoreAllMocks()
   })
 
   it('marks a session unread when its turn finishes in the background', () => {
@@ -1094,6 +1098,36 @@ describe('unread finished sessions', () => {
 
     const idle = { ...working, busy: false }
     publishSessionState('rt1', idle)
+
+    expect($unreadFinishedSessionIds.get()).toEqual([])
+  })
+
+  it('does NOT mark unread when completion uses a tip id for the visible lineage root', () => {
+    setSessions([session({ id: 'tip', _lineage_root_id: 'root' })])
+    $selectedStoredSessionId.set('root')
+
+    const working = makeState({ busy: true, storedSessionId: 'tip' })
+    publishSessionState('rt1', working)
+
+    const idle = { ...working, busy: false }
+    publishSessionState('rt1', idle)
+
+    expect($unreadFinishedSessionIds.get()).toEqual([])
+  })
+
+  it('keeps review while the app is unfocused, then clears it on refocus', () => {
+    setSessions([session({ id: 'tip', _lineage_root_id: 'root' })])
+    $selectedStoredSessionId.set('root')
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+
+    const working = makeState({ busy: true, storedSessionId: 'tip' })
+    publishSessionState('rt1', working)
+    publishSessionState('rt1', { ...working, busy: false })
+
+    expect($unreadFinishedSessionIds.get()).toEqual(['tip'])
+
+    vi.mocked(document.hasFocus).mockReturnValue(true)
+    markFocusedSessionRead()
 
     expect($unreadFinishedSessionIds.get()).toEqual([])
   })
@@ -1228,6 +1262,15 @@ describe('unread finished sessions', () => {
 
     await Promise.resolve()
     expect(setUnreadRemote).not.toHaveBeenCalled()
+  })
+
+  it('clears unread for another tip in the same compressed conversation', () => {
+    setSessions([session({ id: 'tip', _lineage_root_id: 'root' })])
+    $unreadFinishedSessionIds.set(['tip', 'other'])
+
+    markSessionRead('root')
+
+    expect($unreadFinishedSessionIds.get()).toEqual(['other'])
   })
 })
 
