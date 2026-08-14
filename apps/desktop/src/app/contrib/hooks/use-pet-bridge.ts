@@ -4,7 +4,8 @@ import { setPetActivity } from '@/store/pet'
 import { setPetScale } from '@/store/pet-gallery'
 import { setPetOverlayOpenAppHandler, setPetOverlayScaleHandler, setPetOverlaySubmitHandler } from '@/store/pet-overlay'
 import { $sessions } from '@/store/session'
-import { $attentionSessionIds, $workingSessionIds } from '@/store/session-states'
+import { $attentionSessionIds, markFocusedSessionRead } from '@/store/session-states'
+import { $workingSessionIds } from '@/store/session-states'
 import { isAuxiliaryWindow } from '@/store/windows'
 
 import type { GatewayRequester } from '../types'
@@ -90,5 +91,19 @@ export function usePetBridge({ requestGateway, resumeSession, submitText }: PetB
     syncPetBusyFromSessions()
 
     return $workingSessionIds.listen(syncPetBusyFromSessions)
+  }, [])
+
+  // A completion while Hermes is backgrounded is intentionally kept as review
+  // until the user returns to this window. The focused session is the one the
+  // user has actually seen; switching conversations is handled by the store.
+  useEffect(() => {
+    if (isAuxiliaryWindow()) {
+      return
+    }
+
+    const onFocus = () => markFocusedSessionRead()
+    window.addEventListener('focus', onFocus)
+
+    return () => window.removeEventListener('focus', onFocus)
   }, [])
 }
