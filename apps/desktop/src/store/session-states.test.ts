@@ -1070,7 +1070,9 @@ describe('reopenLastClosedTile focuses the restored tab', () => {
     tree.declareDefaultTree(model.group(['workspace'], { active: 'workspace', id: 'grp-main' }))
 
     states.openSessionTile('closed', 'center', 'workspace')
+    session.$unreadFinishedSessionIds.set(['closed'])
     states.focusOpenSession('closed')
+    expect(session.$unreadFinishedSessionIds.get()).toEqual([])
     tree.noteActiveTreeGroup('grp-main')
     expect(findGroupOfPane(tree.$layoutTree.get()!, tilePane('closed'))?.active).toBe(tilePane('closed'))
 

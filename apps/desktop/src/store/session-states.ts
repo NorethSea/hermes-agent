@@ -43,8 +43,10 @@ import {
   $lastReadAtBySessionId,
   $selectedStoredSessionId,
   $sessions,
+  $unreadFinishedSessionIds,
   clearReadBaseline,
   getSessionOwnerHint,
+  idsShareLineage,
   knownSessionOwner,
   lineageAliases,
   markSessionRead,
@@ -64,6 +66,8 @@ import {
 } from './session-request-router'
 import { ackStoredSessionId, markSessionUnreadFinished } from './session-unread'
 import { isBrowserWindow, isSecondaryWindow } from './windows'
+
+const TILE_PANE_PREFIX = 'session-tile:'
 
 // ---------------------------------------------------------------------------
 // Reactive per-runtime session state (view mirror of the wiring cache).
@@ -329,6 +333,38 @@ function clearSettled(storedId: string) {
   settledExpiry.delete(storedId)
 }
 
+/** The session the user is currently looking at, including an active tile. */
+function focusedStoredSessionId(): null | string {
+  const groupId = $activeTreeGroup.get()
+  const tree = $layoutTree.get()
+  const active = groupId && tree ? findGroup(tree, groupId)?.active : undefined
+
+  return active?.startsWith(TILE_PANE_PREFIX) ? active.slice(TILE_PANE_PREFIX.length) : $selectedStoredSessionId.get()
+}
+
+/** The app must be foregrounded before a visible completion counts as read. */
+function isAppWindowFocused(): boolean {
+  return typeof document === 'undefined' || document.hasFocus()
+}
+
+/** Completion is background work while the app is unfocused or another session is visible. */
+function isVisibleSession(storedSessionId: string): boolean {
+  if (!isAppWindowFocused()) {
+    return false
+  }
+
+  const sessions = $sessions.get()
+  const selected = $selectedStoredSessionId.get()
+  const focused = focusedStoredSessionId()
+
+  return [selected, focused].some(id => id !== null && idsShareLineage(storedSessionId, id, sessions))
+}
+
+/** Clear the completion notice for the session shown when the app regains focus. */
+export function markFocusedSessionRead(): void {
+  markSessionRead(focusedStoredSessionId())
+}
+
 /** Stored ids whose turn ended within the grace window. Prunes expired. */
 export function getRecentlySettledSessionIds(now: number = Date.now()): string[] {
   const live: string[] = []
@@ -394,9 +430,7 @@ function handleTransition(previous: ClientSessionState | null, next: ClientSessi
   } else if (!next.busy && wasWorking) {
     markSettled(storedId)
 
-    // FOCUSED, not selected: a session finishing in the tile the user is
-    // watching is already seen, and a tile is never the primary selection.
-    if (storedId !== $focusedStoredSessionId.get()) {
+    if (!isVisibleSession(storedId)) {
       // Re-light only genuinely new completions: if the user already viewed
       // this session (or its family) at or after this settle moment, a
       // re-assert of the same completion must not re-arm the dot. `-1` for
@@ -745,7 +779,6 @@ export interface SessionTileWorkspaceScope {
 // "stale runtime after respawn" bugs by construction).
 const TILES_KEY = 'hermes.desktop.sessionTiles.v2'
 const LEGACY_TILES_KEY = 'hermes.desktop.sessionTiles.v1'
-const TILE_PANE_PREFIX = 'session-tile:'
 const BOTS_TILE_BUCKET = '__bots_workspace__'
 
 /** Persisted placement — `dir` + strip slot (`before`) + dock `anchor` so a
