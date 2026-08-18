@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as model from '@/components/pane-shell/tree/model'
 // Cold transforms belong to collection, not the first unread assertion's budget.
@@ -16,12 +16,17 @@ import * as states from './session-states'
 describe('completed-unread dot follows the focused session', () => {
   const disposers: (() => void)[] = []
 
+  beforeEach(() => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+  })
+
   afterEach(() => {
     // Undo the registrations and store writes this file makes, so the next
     // test starts clean without paying to rebuild the module graph.
     while (disposers.length > 0) {
       disposers.pop()?.()
     }
+    vi.restoreAllMocks()
   })
 
   async function setup() {
