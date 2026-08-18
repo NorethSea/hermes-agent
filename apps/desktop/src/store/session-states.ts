@@ -354,15 +354,27 @@ function isVisibleSession(storedSessionId: string): boolean {
   }
 
   const sessions = $sessions.get()
-  const selected = $selectedStoredSessionId.get()
   const focused = focusedStoredSessionId()
 
-  return [selected, focused].some(id => id !== null && idsShareLineage(storedSessionId, id, sessions))
+  // `focusedStoredSessionId()` already falls back to the primary selection
+  // when the workspace is active. When a tile owns focus, however, the primary
+  // selection remains populated even though that conversation is not visible;
+  // treating both ids as visible suppresses the primary's completion notice.
+  return focused !== null && idsShareLineage(storedSessionId, focused, sessions)
 }
 
 /** Clear the completion notice for the session shown when the app regains focus. */
 export function markFocusedSessionRead(): void {
-  markSessionRead(focusedStoredSessionId())
+  const focused = focusedStoredSessionId()
+
+  markSessionRead(focused)
+  // The transient marker is what drives the pet immediately, but the same
+  // completion is also persisted so it can be rebuilt after a list refresh or
+  // restart. A focus return (or re-entering an already-selected chat) does not
+  // change the selected id, so the selected-id listener is not guaranteed to
+  // run here. Ack both layers together or review can come back after the next
+  // refresh and keep the pet animating.
+  ackStoredSessionId(focused)
 }
 
 /** Stored ids whose turn ended within the grace window. Prunes expired. */

@@ -400,7 +400,8 @@ function PetSpriteImpl({ info, zoom = 1, stateOverride, rowOverride, pauseWhenUn
         const sx = frame * frameW
         const sy = row * frameH
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.imageSmoothingEnabled = false
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
         ctx.drawImage(image, sx, sy, frameW, frameH, 0, 0, backingW, backingH)
         drawnFrame = frame
         drawnRow = row

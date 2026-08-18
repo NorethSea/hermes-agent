@@ -25,6 +25,7 @@ function state(over: Partial<ClientSessionState> = {}): ClientSessionState {
 describe('session status transitions', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     vi.setSystemTime(0)
     clearAllSessionStates()
     $unreadFinishedSessionIds.set([])
@@ -39,6 +40,7 @@ describe('session status transitions', () => {
     $unreadFinishedSessionIds.set([])
     $selectedStoredSessionId.set(null)
     $activeSessionId.set(null)
+    vi.restoreAllMocks()
   })
 
   it('adds a session to $workingSessionIds when busy transitions to true', () => {
@@ -130,6 +132,7 @@ describe('session status transitions', () => {
 describe('session watchdog', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     clearAllSessionStates()
     $unreadFinishedSessionIds.set([])
     $selectedStoredSessionId.set(null)
@@ -143,6 +146,7 @@ describe('session watchdog', () => {
     $unreadFinishedSessionIds.set([])
     $selectedStoredSessionId.set(null)
     $activeSessionId.set(null)
+    vi.restoreAllMocks()
   })
 
   it('marks a silent session stalled without pretending it finished', () => {

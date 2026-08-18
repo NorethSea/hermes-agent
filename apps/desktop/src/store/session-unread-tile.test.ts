@@ -7,10 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 describe('completed-unread dot follows the focused session', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   })
 
   afterEach(() => {
     vi.resetModules()
+    vi.restoreAllMocks()
   })
 
   async function setup() {

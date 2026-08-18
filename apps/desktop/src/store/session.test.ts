@@ -73,6 +73,7 @@ import {
   markFocusedSessionRead,
   publishSessionState
 } from './session-states'
+import { $unreadFinishedMarkers } from './session-unread'
 
 const session = (over: Partial<SessionInfo>): SessionInfo => makeSessionInfo({ id: 'live', ...over })
 
@@ -1033,6 +1034,17 @@ describe('unread finished sessions', () => {
     markFocusedSessionRead()
 
     expect($unreadFinishedSessionIds.get()).toEqual([])
+  })
+
+  it('clears a persisted completion marker when the focused session is read', () => {
+    $selectedStoredSessionId.set('s1')
+    $unreadFinishedSessionIds.set(['s1'])
+    $unreadFinishedMarkers.set({ default: ['s1'] })
+
+    markFocusedSessionRead()
+
+    expect($unreadFinishedSessionIds.get()).toEqual([])
+    expect($unreadFinishedMarkers.get()).toEqual({})
   })
 
   it('does NOT mark unread on idle→idle re-asserts (no prior working state)', () => {

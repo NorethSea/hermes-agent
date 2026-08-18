@@ -2,9 +2,11 @@ import { cleanup, render } from '@testing-library/react'
 import type { MutableRefObject } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import * as sessionStore from '@/store/session'
 import { $resumeExhaustedSessionId, setResumeExhaustedSessionId } from '@/store/session'
 import type { SessionProfileRoute } from '@/store/session-request-router'
 import { markSelectionRestore } from '@/store/session-states'
+import * as sessionUnread from '@/store/session-unread'
 
 import { useRouteResume } from './use-route-resume'
 
@@ -242,6 +244,38 @@ describe('useRouteResume', () => {
 
     expect(resumeSession).toHaveBeenCalledWith('session-2', true)
     expect(markSelectionRestore).toHaveBeenCalledTimes(1)
+  })
+
+  it('acks a remembered route even when the selected id did not change', () => {
+    const markSessionRead = vi.spyOn(sessionStore, 'markSessionRead')
+    const ackStoredSessionId = vi.spyOn(sessionUnread, 'ackStoredSessionId')
+    const resumeSession = vi.fn(async () => undefined)
+    const activeSessionIdRef: MutableRefObject<null | string> = { current: 'runtime-1' }
+    const creatingSessionRef = { current: false }
+    const runtimeIdByStoredSessionIdRef = { current: new Map([['session-1', 'runtime-1']]) }
+    const selectedStoredSessionIdRef: MutableRefObject<null | string> = { current: 'session-1' }
+
+    render(
+      <RouteResumeHarness
+        activeSessionId="runtime-1"
+        activeSessionIdRef={activeSessionIdRef}
+        creatingSessionRef={creatingSessionRef}
+        currentView="chat"
+        freshDraftReady={false}
+        gatewayState="open"
+        locationPathname="/session-1"
+        resumeSession={resumeSession}
+        routedSessionId="session-1"
+        runtimeIdByStoredSessionIdRef={runtimeIdByStoredSessionIdRef}
+        selectedStoredSessionId="session-1"
+        selectedStoredSessionIdRef={selectedStoredSessionIdRef}
+        startFreshSessionDraft={vi.fn()}
+      />
+    )
+
+    expect(markSessionRead).toHaveBeenCalledWith('session-1')
+    expect(ackStoredSessionId).toHaveBeenCalledWith('session-1')
+    expect(resumeSession).not.toHaveBeenCalled()
   })
 
   it('resumes the selected route again when the gateway reconnects', () => {
