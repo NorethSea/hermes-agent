@@ -401,10 +401,13 @@ function isVisibleSession(storedSessionId: string): boolean {
   }
 
   const sessions = $sessions.get()
-  const selected = $selectedStoredSessionId.get()
   const focused = focusedStoredSessionId()
 
-  return [selected, focused].some(id => id !== null && idsShareLineage(storedSessionId, id, sessions))
+  // `focusedStoredSessionId()` already falls back to the primary selection
+  // when the workspace is active. When a tile owns focus, however, the primary
+  // selection remains populated even though that conversation is not visible;
+  // treating both ids as visible suppresses the primary's completion notice.
+  return focused !== null && idsShareLineage(storedSessionId, focused, sessions)
 }
 
 /** Clear the completion notice for the session shown when the app regains focus. */
