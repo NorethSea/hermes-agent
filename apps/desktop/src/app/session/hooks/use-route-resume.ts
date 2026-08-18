@@ -1,9 +1,10 @@
 import { type MutableRefObject, useEffect, useRef } from 'react'
 
 import { isNewChatRoute } from '@/app/routes'
-import { type SessionResumeRequest, setResumeExhaustedSessionId } from '@/store/session'
+import { type SessionResumeRequest, markSessionRead, setResumeExhaustedSessionId } from '@/store/session'
 import type { SessionProfileRoute } from '@/store/session-request-router'
 import { markSelectionRestore } from '@/store/session-states'
+import { ackStoredSessionId } from '@/store/session-unread'
 
 import { useResumeReattach } from './use-resume-reattach'
 import { MAX_RESUME_RETRIES, type ResumeAttemptOptions, resumeRetryDelayMs } from './use-session-actions/resume-latches'
@@ -146,6 +147,14 @@ export function useRouteResume({
     }
 
     if (routedSessionId) {
+      // A remembered route can mount with the same selected id it had before
+      // reload, so the selection listener is not guaranteed to run. The
+      // persisted completion marker must nevertheless be retired immediately:
+      // this session is already the one on screen, and leaving the marker alive
+      // makes the global pet boot straight into review/done after a cold start.
+      markSessionRead(routedSessionId)
+      ackStoredSessionId(routedSessionId)
+
       const cachedRuntime = runtimeIdByStoredSessionIdRef.current.get(routedSessionId)
 
       const alreadyActive =
