@@ -1,7 +1,7 @@
 import { type MutableRefObject, useEffect, useRef } from 'react'
 
 import { isNewChatRoute } from '@/app/routes'
-import { type SessionResumeRequest, markSessionRead, setResumeExhaustedSessionId } from '@/store/session'
+import { markSessionRead, type SessionResumeRequest, setResumeExhaustedSessionId } from '@/store/session'
 import type { SessionProfileRoute } from '@/store/session-request-router'
 import { markSelectionRestore } from '@/store/session-states'
 import { ackStoredSessionId } from '@/store/session-unread'
