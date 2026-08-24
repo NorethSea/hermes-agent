@@ -43,7 +43,6 @@ import {
   $lastReadAtBySessionId,
   $selectedStoredSessionId,
   $sessions,
-  $unreadFinishedSessionIds,
   clearReadBaseline,
   getSessionOwnerHint,
   idsShareLineage,
