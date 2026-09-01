@@ -45,7 +45,8 @@ def _branding(who: str, symbol: str, goodbye: str, prompt: str = "", help_header
     return {
         "agent_name": f"{who} Agent",
         "welcome": f"Welcome to {who} Agent! Type your message or /help for commands.",
-        "goodbye": goodbye, "response_label": f" {symbol} {who} ", "prompt_symbol": prompt or symbol,
+        "goodbye": goodbye, "response_label": f" {symbol} {who} ",
+        "status_prefix": f"{symbol} ", "prompt_symbol": prompt or symbol,
         "help_header": help_header or f"({symbol}) Available Commands"}
 
 
