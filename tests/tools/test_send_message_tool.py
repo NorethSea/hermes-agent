@@ -1947,4 +1947,3 @@ class TestSendQqbotStandalonePayloads:
         assert group_post["json"] == {
             "markdown": {"content": "**bold**\n- item"}, "msg_type": 2,
         }
-
