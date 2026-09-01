@@ -7519,6 +7519,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
     def _build_status_bar_text(self, width: Optional[int] = None) -> str:
         """Return a compact one-line session status string for the TUI footer."""
+        from hermes_cli.skin_engine import get_active_skin
+        _prefix = get_active_skin().get_branding("status_prefix", "⚕ ")
         try:
             snapshot = self._get_status_bar_snapshot()
             if width is None:
@@ -7548,7 +7550,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             if width < 52:
                 segs = []
                 if _ok("model"):
-                    segs.append(f"⚕ {snapshot['model_short']}")
+                    segs.append(f"{_prefix}{snapshot['model_short']}")
                 if _ok("duration"):
                     segs.append(duration_label)
                 if goal_segment:
@@ -7557,12 +7559,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     segs.append(focus_label)
                 if yolo_active and _ok("yolo"):
                     segs.append("⚠ YOLO")
-                text = battery_prefix + " · ".join(segs) if segs else f"{battery_prefix}⚕ {snapshot['model_short']}"
+                text = battery_prefix + " · ".join(segs) if segs else f"{battery_prefix}{_prefix}{snapshot['model_short']}"
                 return self._right_align_status_title(text, session_title, width)
             if width < 76:
                 parts = []
                 if _ok("model"):
-                    parts.append(f"⚕ {snapshot['model_short']}")
+                    parts.append(f"{_prefix}{snapshot['model_short']}")
                 if _ok("context_pct"):
                     parts.append(percent_label)
                 cache = self._cache_hit_rate(snapshot, precision=0)
@@ -7591,12 +7593,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 if yolo_active and _ok("yolo"):
                     parts.append("⚠ YOLO")
                 if not parts:
-                    parts = [f"⚕ {snapshot['model_short']}"]
+                    parts = [f"{_prefix}{snapshot['model_short']}"]
                 return self._right_align_status_title(" · ".join(parts), session_title, width)
 
             parts = []
             if _ok("model"):
-                parts.append(f"⚕ {snapshot['model_short']}")
+                parts.append(f"{_prefix}{snapshot['model_short']}")
             if _ok("context_detail"):
                 if snapshot["context_length"]:
                     ctx_total = _format_context_length(snapshot["context_length"])
@@ -7650,15 +7652,17 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             if total_tokens and field_set is not None and "total_tokens" in field_set:
                 parts.append(f"Σ{format_token_count_compact(total_tokens)}")
             if not parts:
-                parts = [f"⚕ {snapshot['model_short']}"]
+                parts = [f"{_prefix}{snapshot['model_short']}"]
             return self._right_align_status_title(" │ ".join(parts), session_title, width)
         except Exception:
-            return f"⚕ {self.model if getattr(self, 'model', None) else 'Hermes'}"
+            return f"{_prefix}{self.model if getattr(self, 'model', None) else 'Hermes'}"
 
     def _get_status_bar_fragments(self):
         if not self._status_bar_visible or getattr(self, '_model_picker_state', None) or getattr(self, '_command_palette_state', None):
             return []
         try:
+            from hermes_cli.skin_engine import get_active_skin
+            _prefix = get_active_skin().get_branding("status_prefix", "⚕ ")
             snapshot = self._get_status_bar_snapshot()
             # Use prompt_toolkit's own terminal width when running inside the
             # TUI — shutil.get_terminal_size() can return stale or fallback
@@ -7694,7 +7698,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             if width < 52:
                 frags = []
                 if _ok("model"):
-                    frags.append(("class:status-bar", " ⚕ "))
+                    frags.append(("class:status-bar", f" {_prefix}"))
                     frags.append(("class:status-bar-strong", snapshot["model_short"]))
                 if _ok("duration"):
                     _append(frags, " · ", ("class:status-bar-dim", duration_label))
@@ -7706,7 +7710,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     _append(frags, " · ", ("class:status-bar-yolo", "⚠ YOLO"))
                 if not frags:
                     frags = [
-                        ("class:status-bar", " ⚕ "),
+                        ("class:status-bar", f" {_prefix}"),
                         ("class:status-bar-strong", snapshot["model_short"]),
                     ]
                 frags.append(("class:status-bar", " "))
@@ -7720,7 +7724,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
                     frags = []
                     if _ok("model"):
-                        frags.append(("class:status-bar", " ⚕ "))
+                        frags.append(("class:status-bar", f" {_prefix}"))
                         frags.append(("class:status-bar-strong", snapshot["model_short"]))
                     if _ok("context_pct"):
                         _append(frags, " · ", (self._status_bar_context_style(percent), percent_label))
@@ -7745,7 +7749,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                         _append(frags, " · ", ("class:status-bar-yolo", "⚠ YOLO"))
                     if not frags:
                         frags = [
-                            ("class:status-bar", " ⚕ "),
+                            ("class:status-bar", f" {_prefix}"),
                             ("class:status-bar-strong", snapshot["model_short"]),
                         ]
                     frags.append(("class:status-bar", " "))
@@ -7757,7 +7761,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
                     frags = []
                     if _ok("model"):
-                        frags.append(("class:status-bar", " ⚕ "))
+                        frags.append(("class:status-bar", f" {_prefix}"))
                         frags.append(("class:status-bar-strong", snapshot["model_short"]))
                     if _ok("context_detail"):
                         if snapshot["context_length"]:
@@ -7817,7 +7821,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                         _append(frags, " │ ", ("class:status-bar-dim", f"Σ{format_token_count_compact(total_tokens)}"))
                     if not frags:
                         frags = [
-                            ("class:status-bar", " ⚕ "),
+                            ("class:status-bar", f" {_prefix}"),
                             ("class:status-bar-strong", snapshot["model_short"]),
                         ]
                     frags.append(("class:status-bar", " "))
