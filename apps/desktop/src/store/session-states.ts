@@ -379,15 +379,6 @@ function clearSettled(storedId: string) {
   settledExpiry.delete(storedId)
 }
 
-/** The session the user is currently looking at, including an active tile. */
-function focusedStoredSessionId(): null | string {
-  const groupId = $activeTreeGroup.get()
-  const tree = $layoutTree.get()
-  const active = groupId && tree ? findGroup(tree, groupId)?.active : undefined
-
-  return active?.startsWith(TILE_PANE_PREFIX) ? active.slice(TILE_PANE_PREFIX.length) : $selectedStoredSessionId.get()
-}
-
 /** The app must be foregrounded before a visible completion counts as read. */
 function isAppWindowFocused(): boolean {
   return typeof document === 'undefined' || document.hasFocus()
@@ -400,9 +391,9 @@ function isVisibleSession(storedSessionId: string): boolean {
   }
 
   const sessions = $sessions.get()
-  const focused = focusedStoredSessionId()
+  const focused = $focusedStoredSessionId.get()
 
-  // `focusedStoredSessionId()` already falls back to the primary selection
+  // `$focusedStoredSessionId` already falls back to the primary selection
   // when the workspace is active. When a tile owns focus, however, the primary
   // selection remains populated even though that conversation is not visible;
   // treating both ids as visible suppresses the primary's completion notice.
@@ -411,7 +402,7 @@ function isVisibleSession(storedSessionId: string): boolean {
 
 /** Clear the completion notice for the session shown when the app regains focus. */
 export function markFocusedSessionRead(): void {
-  const storedSessionId = focusedStoredSessionId()
+  const storedSessionId = $focusedStoredSessionId.get()
   markSessionRead(storedSessionId)
   if (storedSessionId) {
     ackStoredSessionId(storedSessionId)
