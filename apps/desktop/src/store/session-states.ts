@@ -404,6 +404,7 @@ function isVisibleSession(storedSessionId: string): boolean {
 export function markFocusedSessionRead(): void {
   const storedSessionId = $focusedStoredSessionId.get()
   markSessionRead(storedSessionId)
+
   if (storedSessionId) {
     ackStoredSessionId(storedSessionId)
   }

@@ -720,12 +720,7 @@ describe('preserveLocalAssistantErrors', () => {
 
     const merged = preserveLocalAssistantErrors(nextMessages, currentMessages)
 
-    expect(merged.map(message => message.id)).toEqual([
-      'stored-user',
-      'stored-assistant',
-      'user-456',
-      'assistant-456'
-    ])
+    expect(merged.map(message => message.id)).toEqual(['stored-user', 'stored-assistant', 'user-456', 'assistant-456'])
   })
 
   it('keeps local assistant error when hydrated message reuses same id', () => {
@@ -1483,7 +1478,10 @@ describe('sealOpenToolParts', () => {
       )
     ])
 
-    const messages = [...stopped, { id: 'u2', role: 'user', parts: [{ type: 'text', text: 'ask something else' }] } as ChatMessage]
+    const messages = [
+      ...stopped,
+      { id: 'u2', role: 'user', parts: [{ type: 'text', text: 'ask something else' }] } as ChatMessage
+    ]
 
     const restored = restorePendingClarifyToolCall(
       messages,
