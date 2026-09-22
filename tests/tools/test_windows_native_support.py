@@ -349,6 +349,59 @@ class TestSubprocessCompatHelpers:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# tui_gateway/entry.py signal installation smoke test
+# ---------------------------------------------------------------------------
+
+
+class TestTuiGatewayEntrySignalGuards:
+    """Importing tui_gateway.entry must not crash on the current host."""
+
+    def test_module_imports_cleanly(self):
+        for mod in list(sys.modules):
+            if mod.startswith("tui_gateway"):
+                del sys.modules[mod]
+        import tui_gateway.entry  # noqa: F401
+
+
+# ---------------------------------------------------------------------------
+# hermes_cli/kanban_db_dispatch.py waitpid guard
+# ---------------------------------------------------------------------------
+
+
+class TestKanbanWaitpidWindowsGuard:
+    """The POSIX reaper must not steal unrelated child-process statuses."""
+
+    @staticmethod
+    def _assert_posix_reaper_targets_tracked_pids(monkeypatch):
+        from hermes_cli import kanban_db_dispatch as dispatch
+
+        tracked = {701, 702}
+        wait_calls = []
+
+        def fake_waitpid(pid, options):
+            wait_calls.append((pid, options))
+            return pid, 0
+
+        monkeypatch.setattr(dispatch, "_spawned_worker_pids", set(tracked))
+        monkeypatch.setattr(dispatch.os, "waitpid", fake_waitpid)
+        monkeypatch.setattr(dispatch, "_record_worker_exit", lambda *_args: None)
+
+        assert set(dispatch.reap_worker_zombies()) == tracked
+        assert {pid for pid, _options in wait_calls} == tracked
+        assert all(pid != -1 for pid, _options in wait_calls)
+        assert all(options == dispatch.os.WNOHANG for _pid, options in wait_calls)
+
+    @pytest.mark.linux_only
+    def test_posix_reaper_targets_tracked_worker_pids_on_linux(self, monkeypatch):
+        self._assert_posix_reaper_targets_tracked_pids(monkeypatch)
+
+    @pytest.mark.macos_only
+    def test_posix_reaper_targets_tracked_worker_pids_on_macos(self, monkeypatch):
+        self._assert_posix_reaper_targets_tracked_pids(monkeypatch)
+
+
+# ---------------------------------------------------------------------------
 # tools/environments/local.py Windows temp dir & PATH injection
 # ---------------------------------------------------------------------------
 
