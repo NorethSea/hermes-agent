@@ -26,6 +26,7 @@ describe('completed-unread dot follows the focused session', () => {
     while (disposers.length > 0) {
       disposers.pop()?.()
     }
+
     vi.restoreAllMocks()
   })
 

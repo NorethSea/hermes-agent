@@ -11,7 +11,6 @@ import {
   flashPetActivity,
   hasPetSpriteForMeta,
   mergePetInfoMeta,
-  type PetInfo,
   petInfoFromCache,
   setPetActivity
 } from './pet'
