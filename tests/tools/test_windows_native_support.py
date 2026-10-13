@@ -361,7 +361,7 @@ class TestTuiGatewayEntrySignalGuards:
         for mod in list(sys.modules):
             if mod.startswith("tui_gateway"):
                 del sys.modules[mod]
-        import tui_gateway.entry  # noqa: F401
+        import tui_gateway.entry
 
 
 # ---------------------------------------------------------------------------
@@ -392,11 +392,11 @@ class TestKanbanWaitpidWindowsGuard:
         assert all(pid != -1 for pid, _options in wait_calls)
         assert all(options == dispatch.os.WNOHANG for _pid, options in wait_calls)
 
-    @pytest.mark.linux_only
+    @pytest.mark.platforms("linux")
     def test_posix_reaper_targets_tracked_worker_pids_on_linux(self, monkeypatch):
         self._assert_posix_reaper_targets_tracked_pids(monkeypatch)
 
-    @pytest.mark.macos_only
+    @pytest.mark.platforms("macos")
     def test_posix_reaper_targets_tracked_worker_pids_on_macos(self, monkeypatch):
         self._assert_posix_reaper_targets_tracked_pids(monkeypatch)
 

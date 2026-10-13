@@ -8,10 +8,12 @@ import { requestGatewayForAgent } from '@/store/gateway'
 
 import { $activeSessionId, $selectedStoredSessionId, $unreadFinishedSessionIds } from './session'
 import {
+  $attentionSessionIds,
   $sessionStates,
   $stalledSessionIds,
   $workingSessionIds,
   clearAllSessionStates,
+  getRecentlySettledSessionIds,
   LIVE_TURN_EVENT_SILENCE_MS,
   LIVE_TURN_PROBE_TIMEOUT_MS,
   liveTurnVerdict,
