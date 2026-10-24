@@ -7,6 +7,9 @@ conversation with correct formatting, truncation, and config behavior.
 
 from io import StringIO
 from unittest.mock import MagicMock, patch
+
+import cli as _cli_mod
+from cli import HermesCLI
 from agent.i18n import t
 
 
@@ -14,9 +17,6 @@ from agent.i18n import t
 
 def _make_cli(config_overrides=None, env_overrides=None, **kwargs):
     """Create a HermesCLI instance with minimal mocking."""
-    import cli as _cli_mod
-    from cli import HermesCLI
-
     _clean_config = {
         "model": {
             "default": "anthropic/claude-opus-4.6",

@@ -64,7 +64,7 @@ async def test_cron_delivery_preserves_all_qq_chunks(tmp_path, monkeypatch):
     from gateway.config import GatewayConfig, Platform
     from gateway.delivery import DeliveryRouter, DeliveryTarget
     from gateway.platforms.base import SendResult
-    from gateway.platforms.qqbot import QQAdapter
+    from plugins.platforms.qqbot.adapter import QQAdapter
 
     monkeypatch.setattr("gateway.delivery.get_hermes_home", lambda: tmp_path)
     adapter = QQAdapter(_make_config(app_id="a", client_secret="b"))
