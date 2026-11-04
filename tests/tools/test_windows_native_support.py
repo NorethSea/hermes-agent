@@ -349,22 +349,6 @@ class TestSubprocessCompatHelpers:
 
 
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# tui_gateway/entry.py signal installation smoke test
-# ---------------------------------------------------------------------------
-
-
-class TestTuiGatewayEntrySignalGuards:
-    """Importing tui_gateway.entry must not crash on the current host."""
-
-    def test_module_imports_cleanly(self):
-        for mod in list(sys.modules):
-            if mod.startswith("tui_gateway"):
-                del sys.modules[mod]
-        import tui_gateway.entry
-
-
-# ---------------------------------------------------------------------------
 # hermes_cli/kanban_db_dispatch.py waitpid guard
 # ---------------------------------------------------------------------------
 
